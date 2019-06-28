@@ -1,0 +1,192 @@
+1.安装java
+sudo tar -xzf jdk-8u161-linux-x64.tar.gz -C /usr/lib
+cd /usr/lib
+sudo mv jdk1.8.0_161/ java
+
+sudo gedit /etc/profile
+添加
+export JAVA_HOME=/usr/lib/java
+export JRE_HOME=$JAVA_HOME/jre
+export CLASSPATH=.:$JAVA_HOME/lib:$JRE_HOME/lib:$CLASSPATH
+export PATH=$JAVA_HOME/bin:$JRE_HOME/bin:$PATH
+
+source /etc/profile
+
+2.安装hadoop
+ssh免密登录
+sudo apt-get install openssh-server   #安装SSH server
+ssh localhost                         #登陆SSH，第一次登陆输入yes
+exit                                  #退出登录的ssh localhost
+cd ~/.ssh/                            #如果没法进入该目录，执行一次ssh localhost
+ssh-keygen -t rsa　                    #不要输密码 enter就行
+cat ./id_rsa.pub >> ./authorized_keys #加入授权
+ssh localhost                         #此时已不需密码即可登录localhost
+
+
+sudo tar -zxvf  hadoop-2.6.0.tar.gz -C /usr/local    #解压到/usr/local目录下
+cd /usr/local
+sudo mv  hadoop-2.6.0    hadoop                      #重命名为hadoop
+sudo chown -R hadoop ./hadoop                        #修改文件权限
+新建hadoop用户组以及用户选做（）
+
+sudo gedit /etc/profile
+添加
+export HADOOP_HOME=/usr/local/hadoop
+export CLASSPATH=$($HADOOP_HOME/bin/hadoop classpath):$CLASSPATH
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib:$HADOOP_COMMON_LIB_NATIVE_DIR"  
+
+
+source /etc/profile
+默认单机配置
+
+sudo chmod -R a+w /usr/local/hadoop
+#使用hadoop自带的单词统计的例子体验以下
+cd /usr/local/hadoop
+mkdir ./input
+cp ./etc/hadoop/*.xml ./input   # 将配置文件作为输入文件
+./bin/hadoop jar ./share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar grep ./input ./output 'dfs[a-z.]+'
+cat ./output/*          # 查看运行结果  1    dfsadmin
+
+
+改为伪分布式
+cd /usr/local/hadoop/etc/hadoop
+
+sudo gedit core-site.xml
+修改
+<configuration>
+    <property>
+        <name>hadoop.tmp.dir</name>
+        <value>file:/usr/local/hadoop/tmp</value>
+        <description>Abase for other temporary directories.</description>
+    </property>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://localhost:9000</value>
+    </property>
+</configuration>
+
+
+
+
+sudo gedit hdfs-site.xml
+修改 
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:/usr/local/hadoop/tmp/dfs/name</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:/usr/local/hadoop/tmp/dfs/data</value>
+    </property>
+</configuration>
+
+cd /usr/local/hadoop
+./bin/hdfs namenode -format    #namenode的格式化 
+				#成功后会有“successfully formatted”及“Exiting with status 0”的提示
+sbin/start-dfs.sh 		#启动namenode和datanode进程
+jps 				#查看启动结果
+#成功启动后，可以访问 Web 界面 http://localhost:50070 查看 NameNode 和 Datanode 信息，还可以在线查看 HDFS 中的文件。 
+
+
+
+3.安装spark
+ 安装scala
+sudo tar -zxvf scala-2.12.3.tgz -C /usr/local
+mv scala-2.12.3 scala
+
+sudo gedit /etc/profile
+添加
+export SCALA_HOME=/usr/local/scala
+export PATH=${SCALA_HOME}/bin:$PATH
+
+source /etc/profile
+
+
+sudo tar -xzvf spark-2.4.3-bin-hadoop2.6.tgz -C /usr/lib/
+
+sudo mv spark-2.4.3-bin-hadoop2.6/ spark
+
+sudo gedit /etc/profile
+
+export SPARK_HOME=/usr/lib/spark
+export PATH=${SPARK_HOME}/bin:$PATH
+export PYTHONPATH=/usr/lib/spark/python:/usr/bin/python
+export PYSPARK_PYTHON=python3.6
+
+source /etc/profile
+
+可使用pyspark来测试  查看http://localhost:4040
+
+
+
+
+
+
+
+
+
+
+后续每次启动hadoop
+sudo su 
+ssh localhost #连接免密的root
+cd /usr/local/hadoop #打开Hadoop目录
+./sbin/start-dfs.sh  #启动namenode和datanode进程
+
+lines = sc.textFile("/usr/lib/spark/README.md")
+>>> print lines
+/usr/lib/spark/README.md MapPartitionsRDD[1] at textFile at NativeMethodAccessorImpl.java:0
+>>> 
+>>> lines.count()
+105                                                                             
+>>> lines.first()
+u'# Apache Spark'
+
+安装python3
+
+安装pycharm
+cd pycharm-2017.3.4/bin/
+
+sh ./pycharm.sh
+
+
+
+随便打开一个project，pycharm右上角“run”三角形的左边有一个run configurition，打开它。
+
+设置configurition---Environment--- Environment variables ---点击“...”，出现框框，点击+，输入两个name，一个是SPARK_HOME，另外一个是PYTHONPATH，设置它们的values，SPARK_HOME的value是安装文件夹spark-2.1.1-bin-hadoop2.7的绝对路径，PYTHONPATH的value是该绝对路径／python，例如我的SPARK_HOME的value是/Applications/spark/spark-2.1.1-bin-hadoop2.7，那么我的PYTHONPATH的value是/Applications/spark/spark-2.1.1-bin-hadoop2.7/python 。设置好了保存。
+
+
+在perferences中的project structure中点击右边的“add  content root”，添加py4j-some-version.zip和pyspark.zip的路径（这两个文件都在Spark中的python文件夹下）
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
